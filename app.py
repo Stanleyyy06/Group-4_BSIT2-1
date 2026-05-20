@@ -1,16 +1,16 @@
-import os
-import cv2
 from flask import Flask, Response
+import cv2
 
 app = Flask(__name__)
 
-CAMERA_URL = os.getenv("CAMERA_URL")  # IMPORTANT
+CAMERA_URL = "rtsp://admin:888888@192.168.1.126:10554/tcp/av0_0"
 
 cap = cv2.VideoCapture(CAMERA_URL)
 
 def generate():
     while True:
         success, frame = cap.read()
+
         if not success:
             continue
 
@@ -22,7 +22,7 @@ def generate():
 
 @app.route('/')
 def home():
-    return "<h1>Camera Stream</h1><img src='/video'>"
+    return "Camera Running"
 
 @app.route('/video')
 def video():
