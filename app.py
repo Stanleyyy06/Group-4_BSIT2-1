@@ -1,42 +1,40 @@
-from flask import Flask, render_template, Response
-import os
+from flask import Flask, Response
 import cv2
 
 app = Flask(__name__)
 
-# Replace with your IP camera RTSP URL
-RTSP_URL = "rtsp://192.168.1.126:10554/tcp/av0_0"
+CAMERA_URL = "rtsp://admin:888888@192.168.1.126:10554/tcp/av0_0"
 
-# Open the RTSP stream
-camera = cv2.VideoCapture(RTSP_URL)
+cap = cv2.VideoCapture(CAMERA_URL)
 
 def generate_frames():
     while True:
-        success, frame = camera.read()
+        success, frame = cap.read()
 
         if not success:
-            print("Failed to grab frame")
+            print("Failed to read camera")
             break
-        else:
-            # Encode frame as JPEG
-            ret, buffer = cv2.imencode('.jpg', frame)
-            frame_bytes = buffer.tobytes()
 
-            # Stream frame to browser
-            yield (b'--frame\r\n'
-                   b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+        _, buffer = cv2.imencode('.jpg', frame)
+        frame = buffer.tobytes()
 
-@app.route("/")
+        yield (b'--frame\r\n'
+               b'Content-Type: image/jpeg\r\n\r\n' +
+               frame + b'\r\n')
+
+@app.route('/')
 def home():
-    return render_template("camera.html")
+    return '''
+    <h1>IP Camera Stream</h1>
+    <img src="/video">
+    '''
 
-@app.route("/video_feed")
-def video_feed():
+@app.route('/video')
+def video():
     return Response(
         generate_frames(),
         mimetype='multipart/x-mixed-replace; boundary=frame'
     )
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=5000)
