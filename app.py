@@ -1,5 +1,5 @@
 import os
-import psycopg2
+import psycopg
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import (
@@ -57,7 +57,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL:
     try:
-        conn = psycopg2.connect(DATABASE_URL)
+        conn = psycopg.connect(DATABASE_URL)
         conn.autocommit = True
         cursor = conn.cursor()
 
