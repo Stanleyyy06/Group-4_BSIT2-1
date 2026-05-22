@@ -1,4 +1,5 @@
 import os
+import psycopg2
 from datetime import datetime
 from dotenv import load_dotenv
 from flask import (
@@ -51,7 +52,30 @@ limiter = Limiter(key_func=get_remote_address, default_limits=[app.config["IP_RA
 limiter.init_app(app)
 
 app.register_blueprint(auth_bp)
+# PostgreSQL Connection for Railway
+DATABASE_URL = os.getenv("DATABASE_URL")
 
+if DATABASE_URL:
+    try:
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.autocommit = True
+        cursor = conn.cursor()
+
+        # Run PostgreSQL schema automatically
+        with open("postgres_schema.sql", "r", encoding="utf-8") as f:
+            schema_sql = f.read()
+
+        # Fix incompatible index before execution
+        schema_sql = schema_sql.replace(
+            "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role) WHERE active IS TRUE;",
+            "CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);"
+        )
+
+        cursor.execute(schema_sql)
+        print("PostgreSQL schema initialized successfully.")
+
+    except Exception as e:
+        print("PostgreSQL initialization error:", e)
 init_db()
 ensure_admin_user(app.config["ADMIN_USERNAME"], app.config["ADMIN_PASSWORD"])
 
