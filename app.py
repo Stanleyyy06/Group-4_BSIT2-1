@@ -76,6 +76,7 @@ if DATABASE_URL:
 
     except Exception as e:
         print("PostgreSQL initialization error:", e)
+
 init_db()
 ensure_admin_user(app.config["ADMIN_USERNAME"], app.config["ADMIN_PASSWORD"])
 
@@ -98,6 +99,10 @@ def resolve_camera_source():
 
 @app.before_request
 def enforce_network_policies():
+    # Bypass ALL checks for healthcheck — Railway probe IP is not whitelisted
+    if request.path == "/health":
+        return
+
     g.client_ip = get_client_ip()
     endpoint = request.endpoint or ""
 
@@ -105,13 +110,13 @@ def enforce_network_policies():
         return render_template("access_denied.html", ip=g.client_ip, reason="This IP is blocked."), 403
 
     safe_endpoints = {"static", "auth.login", "auth.register", "health_check"}
-    
+
     # Allow logged-in admins to access admin and IP management pages
     # regardless of IP whitelist status (needed to approve IPs)
     admin_endpoints = {"admin_requests", "handle_request_action", "ip_management", "notifications"}
     if session.get("role") == "admin" and endpoint in admin_endpoints:
         return
-    
+
     if endpoint in safe_endpoints:
         return
 
@@ -210,7 +215,7 @@ def ip_management():
     if request.method == "POST":
         action = request.form.get("action")
         ip_address = request.form.get("ip_address", "").strip()
-        ip_address = normalize_ip(ip_address)  # Normalize IP for consistency
+        ip_address = normalize_ip(ip_address)
         reason = request.form.get("reason", "Manual security action")
 
         if action == "allow" and ip_address:
@@ -223,7 +228,6 @@ def ip_management():
             flash(f"{ip_address} was added to the approved IP list.", "success")
         elif action == "block" and ip_address:
             from models import block_ip
-
             block_ip(ip_address, reason, blocked_by=session.get("username"))
             create_notification(
                 title="IP blocked",
@@ -233,7 +237,6 @@ def ip_management():
             flash(f"{ip_address} has been blocked.", "warning")
         elif action == "unblock" and ip_address:
             from models import unblock_ip
-
             unblock_ip(ip_address)
             flash(f"{ip_address} has been unblocked.", "success")
 
