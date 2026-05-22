@@ -3,9 +3,9 @@ builder = "dockerfile"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "gunicorn app:app --worker-class=gthread --workers=2 --threads=2"
+startCommand = "gunicorn app:app --bind 0.0.0.0:$PORT --worker-class=gthread --workers=1 --threads=2"
 healthcheckPath = "/health"
-healthcheckTimeout = 100
+healthcheckTimeout = 300
 
 [env]
 FLASK_ENV = "production"
